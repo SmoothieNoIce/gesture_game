@@ -8,9 +8,42 @@
 import SwiftUI
 
 struct ContentView: View {
+    
+    @State private var isStart = false
+
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        ZStack{
+                  VStack{
+                    Text("Spelling words").font(.largeTitle).padding(50)
+                      Button(
+                          action:{
+                              isStart = true
+                          },
+                          label:{Text("開始遊戲")
+                              .foregroundColor(Color.white)
+                              .padding(.all, 9.0)
+                          })
+                        .background(Color.green)
+                              .cornerRadius(10)
+                      
+                      Link(destination: URL(string: "https://zh.wikipedia.org/wiki/%E6%BD%9B%E7%83%8F%E9%BE%9C")!, label: {
+                                  VStack {
+                                      Text("規則")
+                                          .foregroundColor(Color.white)
+                                          .padding(.all, 9.0)
+                                          .background(Color.green)
+                                          .cornerRadius(10)
+                                  }
+                      })
+
+                  }
+            
+              }
+        
+        EmptyView().fullScreenCover(isPresented: /*@START_MENU_TOKEN@*/.constant(true)/*@END_MENU_TOKEN@*/, content: {
+            ContentView()
+        })
+        
     }
 }
 
