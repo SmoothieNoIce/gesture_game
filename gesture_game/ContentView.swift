@@ -40,8 +40,8 @@ struct ContentView: View {
             
               }
         
-        EmptyView().fullScreenCover(isPresented: /*@START_MENU_TOKEN@*/.constant(true)/*@END_MENU_TOKEN@*/, content: {
-            ContentView()
+        EmptyView().fullScreenCover(isPresented: .constant(isStart), content: {
+        InGameView()
         })
         
     }
