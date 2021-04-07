@@ -13,7 +13,7 @@ struct Question : Identifiable,Hashable{
     let img : String
 }
 
-struct Qua :  Identifiable{
+struct Qua :  Identifiable,Equatable{
     let id = UUID()
     let char : Character
     var isCorrect = false
@@ -21,7 +21,7 @@ struct Qua :  Identifiable{
     var location = CGRect.zero
 }
 
-struct Ans :  Identifiable{
+struct Ans :  Identifiable,Equatable{
     let id = UUID()
     let char : Character
     var isFilled = false
@@ -30,10 +30,10 @@ struct Ans :  Identifiable{
 
 struct InGameView: View {
     @State var questions: Array<Question> = [
-        Question(text: "кролик", img: ""),//rabbit
-        Question(text: "собака", img: ""),//dog
-        Question(text: "коммунист", img: ""),//communist,
-        Question(text: "совет", img: "")//soviet,
+        Question(text: "кролик", img: "rabbit"),//rabbit
+        Question(text: "собака1", img: "dog"),//dog
+        Question(text: "черепаха", img: "turtle"),//turtle,
+        Question(text: "кошка", img: "cat"),//cat,
     ]
     @State var currentShuffle = [Qua]()
     @State var currentAns = [Ans]()
@@ -44,19 +44,26 @@ struct InGameView: View {
             Image("game_background")
                     .edgesIgnoringSafeArea(.all)
             VStack{
-                    Text("Spelling words").font(.title).padding(50)
+                Image("\(questions[currentIdx].img)")
+                            .resizable()
+                            .frame(width: 200, height: 200, alignment: .center)
+                            .animation(.default)
             }.offset(x: 0, y: -100)
             
             HStack{
                 ForEach(currentShuffle.indices, id:\.self){ (idx) in
                     DragView(qua: $currentShuffle[idx],currentAns: $currentAns,onDragFinish: onDragFinish)
-                }
+                }.onDelete(perform: {indexSet in
+                    currentShuffle.remove(atOffsets: indexSet)
+                })
             }.offset(x: 0, y: 0)
             
             HStack{
                 ForEach(currentAns.indices, id:\.self){ (idx) in
                     WordView(ans:$currentAns[idx])
-                }
+                }.onDelete(perform: {indexSet in
+                    currentAns.remove(atOffsets: indexSet)
+                })
             }.offset(x: 0, y: 150)
         }.onAppear(perform: {
             startGame()
@@ -86,14 +93,18 @@ struct InGameView: View {
     }
     
     func toNextQuestion(){
-        currentIdx = currentIdx + 1
+        currentIdx += 1
+        print(currentIdx)
         currentShuffle.removeAll()
         currentAns.removeAll()
-        for i in questions[currentIdx].text{
-            currentShuffle.append(Qua(char: i))
+        let text =  questions[currentIdx].text
+        for i in 0...text.count-1{
+            let char =  text[text.index(text.startIndex, offsetBy: i)]
+            currentShuffle.append(Qua(char: char))
         }
-        for i in questions[currentIdx].text{
-            currentAns.append(Ans(char: i))
+        for i in 0...text.count-1{
+            let char =  text[text.index(text.startIndex, offsetBy: i)]
+            currentAns.append(Ans(char: char))
         }
     }
     
@@ -112,6 +123,7 @@ struct DragView: View {
     @Binding var currentAns : [Ans]
     @State var background : Color = Color.yellow
     var onDragFinish : ()->Void
+    var test : Int = 1
     var body: some View {
         VStack{
           
@@ -129,6 +141,8 @@ struct DragView: View {
             GeometryReader(content: { geometry in
                 Color.clear.onAppear(perform: {
                     qua.location  = geometry.frame(in: .global)
+                }).onChange(of: currentAns, perform: { newValue in
+                    qua.location  = geometry.frame(in: .global)
                 })
             })
         )
@@ -139,11 +153,6 @@ struct DragView: View {
                     qua.offset.height = value.translation.height
                 })
                 .onEnded({value in
-                    GeometryReader(content: { geometry in
-                        Color.clear.onAppear(perform: {
-                            qua.location  = geometry.frame(in: .global)
-                        })
-                    })
                     var rect = qua.location
                     print(rect.origin.x)
                     print(rect.origin.y)
@@ -190,6 +199,8 @@ struct WordView: View {
         .overlay(
             GeometryReader(content: { geometry in
                 Color.clear.onAppear(perform: {
+                    ans.location  = geometry.frame(in: .global)
+                }).onChange(of: ans, perform: { newValue in
                     ans.location  = geometry.frame(in: .global)
                 })
             })
