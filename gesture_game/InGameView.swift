@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct Question : Identifiable,Hashable{
     let id = UUID()
@@ -28,43 +29,133 @@ struct Ans :  Identifiable,Equatable{
     var location = CGRect.zero
 }
 
+class GameTimer: ObservableObject {
+    init(onOverTime: @escaping () -> Void) {
+        self.onOverTime = onOverTime
+    }
+    
+    private var frequency = 1.0
+    private var timer: Timer?
+    private var startDate: Date?
+    @Published var secondsElapsed = 0
+    lazy var onOverTime : () -> Void = {}
+
+    
+    func start() {
+        secondsElapsed = 0
+        startDate = Date()
+        timer = Timer.scheduledTimer(withTimeInterval: frequency, repeats: true)
+        { timer in
+            if let startDate = self.startDate {
+                self.secondsElapsed = Int(timer.fireDate.timeIntervalSince1970 -
+                                            startDate.timeIntervalSince1970)
+                if self.secondsElapsed > 60{
+                    self.setOverTime()
+                }
+            }
+        }
+    }
+    
+    func setOverTime(){
+        self.secondsElapsed = 0
+    }
+    
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
+
 struct InGameView: View {
+    
+    @Binding var isStart : Bool
+    @Binding var isEnd : Bool
+    
+    @State var totalQuestionCount = 3
+    @State var questionTime = 60
+    
     @State var questions: Array<Question> = [
         Question(text: "кролик", img: "rabbit"),//rabbit
         Question(text: "собака1", img: "dog"),//dog
         Question(text: "черепаха", img: "turtle"),//turtle,
         Question(text: "кошка", img: "cat"),//cat,
+        Question(text: "мышь", img: "mouse"),//mouse,
+        Question(text: "слон", img: "elephant"),//elephant,
+        Question(text: "нести", img: "bear"),//нести,
+        Question(text: "корова", img: "cow"),//cow,
+        Question(text: "олень", img: "deer"),//deer,
+        Question(text: "лиса", img: "fox"),//fox,
+        Question(text: "лягушка", img: "frog"),//frog,
+        Question(text: "курица", img: "chicken"),//chicken,
     ]
+    
     @State var currentShuffle = [Qua]()
     @State var currentAns = [Ans]()
     @State var currentIdx = 0
+    @State var correctQuestions = 0
+    
+    @StateObject var gameTimer = GameTimer(onOverTime: {
+        toNextQuestion()
+    })
     
     var body: some View {
         return ZStack{
             Image("game_background")
-                    .edgesIgnoringSafeArea(.all)
+                .edgesIgnoringSafeArea(.all)
             VStack{
                 Image("\(questions[currentIdx].img)")
-                            .resizable()
-                            .frame(width: 200, height: 200, alignment: .center)
-                            .animation(.default)
+                    .resizable()
+                    .frame(width: 200, height: 200, alignment: .center)
+                    .animation(.default)
             }.offset(x: 0, y: -100)
+            
+            VStack{
+                HStack{
+                    Text("時間剩餘：\(gameTimer.secondsElapsed)")
+                        .foregroundColor(Color.white)
+                        .padding(.all, 9)
+                }.background(Color.green).cornerRadius(10)
+                HStack{
+                    Text("答對題數：\(correctQuestions)")
+                        .foregroundColor(Color.white)
+                        .padding(.all, 9)
+                }.background(Color.blue).cornerRadius(10)
+            }.offset(x: -350, y: -130)
+            
+            HStack{
+                ForEach(currentAns.indices, id:\.self){ (idx) in
+                    WordView(ans:Binding(get: {
+                        currentAns[idx]
+                    }, set: {
+                        let value = $0
+                        guard let index = currentAns.firstIndex(where: { $0.id == currentAns[idx].id }) else {
+                            fatalError("Can't find")
+                        }
+                        currentAns[index] = value
+                    }))
+                }.onDelete(perform: {indexSet in
+                    currentAns.remove(atOffsets: indexSet)
+                })
+            }.offset(x: 0, y: 150)
             
             HStack{
                 ForEach(currentShuffle.indices, id:\.self){ (idx) in
-                    DragView(qua: $currentShuffle[idx],currentAns: $currentAns,onDragFinish: onDragFinish)
+                    DragView(qua: Binding(get: {
+                        if idx >= currentShuffle.count{
+                            return Qua(char:" ")
+                        }
+                        return currentShuffle[idx]
+                    }, set: { value in
+                        if idx < currentShuffle.count{
+                            currentShuffle[idx] = value
+                        }
+                    }),currentAns: $currentAns,onDragFinish: onDragFinish)
                 }.onDelete(perform: {indexSet in
                     currentShuffle.remove(atOffsets: indexSet)
                 })
             }.offset(x: 0, y: 0)
             
-            HStack{
-                ForEach(currentAns.indices, id:\.self){ (idx) in
-                    WordView(ans:$currentAns[idx])
-                }.onDelete(perform: {indexSet in
-                    currentAns.remove(atOffsets: indexSet)
-                })
-            }.offset(x: 0, y: 150)
+            
         }.onAppear(perform: {
             startGame()
         })
@@ -82,6 +173,13 @@ struct InGameView: View {
         }
     }
     
+    func playVoice(){
+        let utterance =  AVSpeechUtterance(string: questions[currentIdx].text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "ru-RU")
+        let synthesizer = AVSpeechSynthesizer()
+        synthesizer.speak(utterance)
+    }
+    
     func startGame(){
         questions.shuffle()
         for i in questions[currentIdx].text{
@@ -90,11 +188,17 @@ struct InGameView: View {
         for i in questions[currentIdx].text{
             currentAns.append(Ans(char: i))
         }
+        gameTimer.stop()
+        gameTimer.start()
+        playVoice()
     }
     
     func toNextQuestion(){
+        if currentIdx+1 >= totalQuestionCount{
+            isEnd = true
+            return
+        }
         currentIdx += 1
-        print(currentIdx)
         currentShuffle.removeAll()
         currentAns.removeAll()
         let text =  questions[currentIdx].text
@@ -106,6 +210,9 @@ struct InGameView: View {
             let char =  text[text.index(text.startIndex, offsetBy: i)]
             currentAns.append(Ans(char: char))
         }
+        gameTimer.stop()
+        gameTimer.start()
+        playVoice()
     }
     
 }
@@ -113,7 +220,7 @@ struct InGameView: View {
 struct InGameView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            InGameView().preferredColorScheme(.dark).previewLayout(.fixed(width: 667, height: 375))
+            InGameView(isStart: .constant(false), isEnd: .constant(false)).preferredColorScheme(.dark).previewLayout(.fixed(width: 800, height: 375))
         }
     }
 }
@@ -122,16 +229,17 @@ struct DragView: View {
     @Binding var qua : Qua
     @Binding var currentAns : [Ans]
     @State var background : Color = Color.yellow
+    @State var isMoved : Bool = false
     var onDragFinish : ()->Void
-    var test : Int = 1
+    
     var body: some View {
         VStack{
-          
-                VStack{
-                    if !qua.isCorrect {
+            
+            VStack{
+                if !qua.isCorrect {
                     Text(String(qua.char))
-                    }
-                }.frame(width: 50, height: 50, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
+                }
+            }.frame(width: 50, height: 50, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
             
             
         }.background(background)
@@ -149,18 +257,19 @@ struct DragView: View {
         .gesture(
             DragGesture()
                 .onChanged({ value in
+                    if !isMoved {
+                        isMoved = true
+                        playVoice()
+                    }
                     qua.offset.width = value.translation.width
                     qua.offset.height = value.translation.height
                 })
                 .onEnded({value in
+                    isMoved = false
                     var rect = qua.location
-                    print(rect.origin.x)
-                    print(rect.origin.y)
                     rect.origin.x = rect.origin.x + value.translation.width
                     rect.origin.y = rect.origin.y + value.translation.height
-                    print(rect.origin.x)
-                    print(rect.origin.y)
-
+                    
                     for i in 0...currentAns.count-1{
                         if rect.intersects(currentAns[i].location) && qua.char == currentAns[i].char{
                             currentAns[i].isFilled = true
@@ -180,6 +289,14 @@ struct DragView: View {
             }
         })
     }
+    
+    func playVoice(){
+        let utterance =  AVSpeechUtterance(string: String(qua.char))
+        utterance.voice = AVSpeechSynthesisVoice(language: "ru-RU")
+        let synthesizer = AVSpeechSynthesizer()
+        synthesizer.speak(utterance)
+    }
+    
 }
 
 

@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     
     @State private var isStart = false
+    @State private var isEnd = false
 
     var body: some View {
         ZStack{
@@ -41,7 +42,7 @@ struct ContentView: View {
               }
         
         EmptyView().fullScreenCover(isPresented: .constant(isStart), content: {
-        InGameView()
+            InGameView(isStart: $isStart, isEnd: $isEnd)
         })
         
     }
@@ -49,6 +50,7 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        Group {
+        }
     }
 }
