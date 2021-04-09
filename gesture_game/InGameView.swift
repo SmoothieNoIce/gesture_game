@@ -30,16 +30,11 @@ struct Ans :  Identifiable,Equatable{
 }
 
 class GameTimer: ObservableObject {
-    init(onOverTime: @escaping () -> Void) {
-        self.onOverTime = onOverTime
-    }
-    
     private var frequency = 1.0
     private var timer: Timer?
     private var startDate: Date?
     @Published var secondsElapsed = 0
-    lazy var onOverTime : () -> Void = {}
-
+    @Published var isTimeEnd = false
     
     func start() {
         secondsElapsed = 0
@@ -49,15 +44,8 @@ class GameTimer: ObservableObject {
             if let startDate = self.startDate {
                 self.secondsElapsed = Int(timer.fireDate.timeIntervalSince1970 -
                                             startDate.timeIntervalSince1970)
-                if self.secondsElapsed > 60{
-                    self.setOverTime()
-                }
             }
         }
-    }
-    
-    func setOverTime(){
-        self.secondsElapsed = 0
     }
     
     func stop() {
@@ -72,7 +60,7 @@ struct InGameView: View {
     @Binding var isEnd : Bool
     
     @State var totalQuestionCount = 3
-    @State var questionTime = 60
+    @State var questionTime = 10
     
     @State var questions: Array<Question> = [
         Question(text: "кролик", img: "rabbit"),//rabbit
@@ -92,11 +80,10 @@ struct InGameView: View {
     @State var currentShuffle = [Qua]()
     @State var currentAns = [Ans]()
     @State var currentIdx = 0
+    @State var isTimeEnd = false
     @State var correctQuestions = 0
     
-    @StateObject var gameTimer = GameTimer(onOverTime: {
-        toNextQuestion()
-    })
+    @StateObject var gameTimer = GameTimer()
     
     var body: some View {
         return ZStack{
@@ -111,7 +98,7 @@ struct InGameView: View {
             
             VStack{
                 HStack{
-                    Text("時間剩餘：\(gameTimer.secondsElapsed)")
+                    Text("時間剩餘：\(questionTime - gameTimer.secondsElapsed)")
                         .foregroundColor(Color.white)
                         .padding(.all, 9)
                 }.background(Color.green).cornerRadius(10)
@@ -158,6 +145,11 @@ struct InGameView: View {
             
         }.onAppear(perform: {
             startGame()
+        }).onChange(of: gameTimer.secondsElapsed, perform: { value in
+            if value > questionTime{
+                toNextQuestion()
+                gameTimer.secondsElapsed = 0
+            }
         })
     }
     
