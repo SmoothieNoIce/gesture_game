@@ -33,7 +33,14 @@ class GameTimer: ObservableObject {
     private var frequency = 1.0
     private var timer: Timer?
     private var startDate: Date?
-    @Published var secondsElapsed = 0
+    var questionTime:Int = 60
+    @Published var progress : Float = 1.0
+    @Published var secondsElapsed = 0{
+        didSet{
+            progress = Float(Float(Float(secondsElapsed)/60.0))
+            print(progress)
+        }
+    }
     @Published var isTimeEnd = false
     
     func start() {
@@ -56,12 +63,12 @@ class GameTimer: ObservableObject {
 
 struct InGameView: View {
     
-    @Binding var isStart : Bool
-    @Binding var isEnd : Bool
-    
-    @State var totalQuestionCount = 3
-    @State var questionTime = 10
-    
+    @Binding var currentPage : Page
+    @Binding var score : Int
+
+    @Binding var totalQuestionCount : Int
+    @Binding var questionTime : Int
+
     @State var questions: Array<Question> = [
         Question(text: "кролик", img: "rabbit"),//rabbit
         Question(text: "собака1", img: "dog"),//dog
@@ -81,12 +88,12 @@ struct InGameView: View {
     @State var currentAns = [Ans]()
     @State var currentIdx = 0
     @State var isTimeEnd = false
-    @State var correctQuestions = 0
     
     @StateObject var gameTimer = GameTimer()
     
     var body: some View {
         return ZStack{
+       
             Image("game_background")
                 .edgesIgnoringSafeArea(.all)
             VStack{
@@ -96,18 +103,19 @@ struct InGameView: View {
                     .animation(.default)
             }.offset(x: 0, y: -100)
             
-            VStack{
+            VStack(alignment: .leading, spacing: /*@START_MENU_TOKEN@*/nil/*@END_MENU_TOKEN@*/, content: {
+                ProgressBar(value: $gameTimer.progress).frame(width: 300, height: 20, alignment: .center)
                 HStack{
                     Text("時間剩餘：\(questionTime - gameTimer.secondsElapsed)")
                         .foregroundColor(Color.white)
                         .padding(.all, 9)
                 }.background(Color.green).cornerRadius(10)
                 HStack{
-                    Text("答對題數：\(correctQuestions)")
+                    Text("答對題數：\(score)")
                         .foregroundColor(Color.white)
                         .padding(.all, 9)
                 }.background(Color.blue).cornerRadius(10)
-            }.offset(x: -350, y: -130)
+            }).offset(x: -220, y: -120)
             
             HStack{
                 ForEach(currentAns.indices, id:\.self){ (idx) in
@@ -142,15 +150,23 @@ struct InGameView: View {
                 })
             }.offset(x: 0, y: 0)
             
-            
         }.onAppear(perform: {
             startGame()
         }).onChange(of: gameTimer.secondsElapsed, perform: { value in
             if value > questionTime{
-                toNextQuestion()
-                gameTimer.secondsElapsed = 0
+             
+                gameFinished()
             }
         })
+        
+      
+        
+    }
+    
+    func gameFinished(){
+        gameTimer.secondsElapsed = 0
+        //isStart = false
+        currentPage = Page.RESULT_PAGE
     }
     
     func onDragFinish(){
@@ -161,6 +177,7 @@ struct InGameView: View {
             }
         }
         if isFinished{
+            score += 1
             toNextQuestion()
         }
     }
@@ -180,14 +197,13 @@ struct InGameView: View {
         for i in questions[currentIdx].text{
             currentAns.append(Ans(char: i))
         }
-        gameTimer.stop()
         gameTimer.start()
         playVoice()
     }
     
     func toNextQuestion(){
         if currentIdx+1 >= totalQuestionCount{
-            isEnd = true
+            gameFinished()
             return
         }
         currentIdx += 1
@@ -202,8 +218,6 @@ struct InGameView: View {
             let char =  text[text.index(text.startIndex, offsetBy: i)]
             currentAns.append(Ans(char: char))
         }
-        gameTimer.stop()
-        gameTimer.start()
         playVoice()
     }
     
@@ -212,7 +226,10 @@ struct InGameView: View {
 struct InGameView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
-            InGameView(isStart: .constant(false), isEnd: .constant(false)).preferredColorScheme(.dark).previewLayout(.fixed(width: 800, height: 375))
+            InGameView(currentPage: .constant(Page.GAME_PAGE),
+                       score: .constant(0),
+                       totalQuestionCount: .constant(10),
+                       questionTime: .constant(60)).previewLayout(.fixed(width: 800, height: 375))
         }
     }
 }
@@ -280,6 +297,7 @@ struct DragView: View {
                 background = Color.yellow
             }
         })
+    
     }
     
     func playVoice(){
@@ -288,6 +306,8 @@ struct DragView: View {
         let synthesizer = AVSpeechSynthesizer()
         synthesizer.speak(utterance)
     }
+    
+   
     
 }
 

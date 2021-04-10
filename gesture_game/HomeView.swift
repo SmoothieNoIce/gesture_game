@@ -7,18 +7,19 @@
 
 import SwiftUI
 
-struct ContentView: View {
-    
-    @State private var isStart = false
-    @State private var isEnd = false
 
+struct HomeView: View {
+    
+    @Binding var currentPage : Page
+
+    
     var body: some View {
         ZStack{
                   VStack{
                     Text("Spelling words").font(.largeTitle).padding(50)
                       Button(
                           action:{
-                              isStart = true
+                            currentPage = Page.GAME_PAGE
                           },
                           label:{Text("開始遊戲")
                               .foregroundColor(Color.white)
@@ -36,15 +37,23 @@ struct ContentView: View {
                                           .cornerRadius(10)
                                   }
                       })
+                    
+                    Button(
+                        action:{
+                            currentPage = Page.LEADERBOARD_PAGE
+                        },
+                        label:{Text("LeaderBoard")
+                            .foregroundColor(Color.white)
+                            .padding(.all, 9.0)
+                        })
+                      .background(Color.green)
+                            .cornerRadius(10)
 
                   }
             
-              }
+        }
         
-        EmptyView().fullScreenCover(isPresented: .constant(isStart), content: {
-            InGameView(isStart: $isStart, isEnd: $isEnd)
-        })
-        
+
     }
 }
 
