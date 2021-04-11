@@ -36,7 +36,12 @@ struct LeaderBoardView: View {
                    
                     List(0..<list.count, id:\.self) { (i) in
                         HStack{
-                            Text("\(i)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            switch(i){
+                            case 0:Text("🥇").frame(maxWidth:100)
+                            case 1:Text("🥈").frame(maxWidth:100)
+                            case 2:Text("🥉").frame(maxWidth:100)
+                            default:Text("\(i+1)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            }
                             Spacer()
                             Text("\(list[i].name)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
                             Spacer()

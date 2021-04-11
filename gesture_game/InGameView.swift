@@ -43,7 +43,7 @@ struct InGameView: View {
 
     @State var questions: Array<Question> = [
         Question(text: "кролик", img: "rabbit"),//rabbit
-        Question(text: "собака1", img: "dog"),//dog
+        Question(text: "собака", img: "dog"),//dog
         Question(text: "черепаха", img: "turtle"),//turtle,
         Question(text: "кошка", img: "cat"),//cat,
         Question(text: "мышь", img: "mouse"),//mouse,
@@ -225,8 +225,9 @@ struct InGameView: View {
         currentShuffle.removeAll()
         currentAns.removeAll()
         let text =  questions[currentIdx].text
-        for i in 0...text.count-1{
-            let char =  text[text.index(text.startIndex, offsetBy: i)]
+        let shuffled = text.shuffled()
+        for i in 0...shuffled.count-1{
+            let char =  shuffled[shuffled.index(shuffled.startIndex, offsetBy: i)]
             currentShuffle.append(Qua(char: char))
         }
         for i in 0...text.count-1{
