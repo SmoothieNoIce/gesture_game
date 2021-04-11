@@ -29,37 +29,7 @@ struct Ans :  Identifiable,Equatable{
     var location = CGRect.zero
 }
 
-class GameTimer: ObservableObject {
-    private var frequency = 1.0
-    private var timer: Timer?
-    private var startDate: Date?
-    var questionTime:Int = 60
-    @Published var progress : Float = 1.0
-    @Published var secondsElapsed = 0{
-        didSet{
-            progress = Float(Float(Float(secondsElapsed)/60.0))
-            print(progress)
-        }
-    }
-    @Published var isTimeEnd = false
-    
-    func start() {
-        secondsElapsed = 0
-        startDate = Date()
-        timer = Timer.scheduledTimer(withTimeInterval: frequency, repeats: true)
-        { timer in
-            if let startDate = self.startDate {
-                self.secondsElapsed = Int(timer.fireDate.timeIntervalSince1970 -
-                                            startDate.timeIntervalSince1970)
-            }
-        }
-    }
-    
-    func stop() {
-        timer?.invalidate()
-        timer = nil
-    }
-}
+
 
 struct InGameView: View {
     
@@ -67,7 +37,9 @@ struct InGameView: View {
     @Binding var score : Int
 
     @Binding var totalQuestionCount : Int
-    @Binding var questionTime : Int
+        
+    @ObservedObject var gameTimer: GameTimer
+
 
     @State var questions: Array<Question> = [
         Question(text: "кролик", img: "rabbit"),//rabbit
@@ -82,40 +54,43 @@ struct InGameView: View {
         Question(text: "лиса", img: "fox"),//fox,
         Question(text: "лягушка", img: "frog"),//frog,
         Question(text: "курица", img: "chicken"),//chicken,
+        Question(text: "волк", img: "wolf"),//wolf,
     ]
     
     @State var currentShuffle = [Qua]()
     @State var currentAns = [Ans]()
     @State var currentIdx = 0
-    @State var isTimeEnd = false
-    
-    @StateObject var gameTimer = GameTimer()
-    
+        
     var body: some View {
         return ZStack{
        
-            Image("game_background")
+            Image("background_1")
                 .edgesIgnoringSafeArea(.all)
             VStack{
                 Image("\(questions[currentIdx].img)")
                     .resizable()
-                    .frame(width: 200, height: 200, alignment: .center)
+                    .frame(maxWidth:400,maxHeight: 200)
                     .animation(.default)
-            }.offset(x: 0, y: -100)
+                    .cornerRadius(10).onTapGesture(perform: {
+                        playVoice()
+                    })
+            }.offset(x: 0, y: 20)
             
             VStack(alignment: .leading, spacing: /*@START_MENU_TOKEN@*/nil/*@END_MENU_TOKEN@*/, content: {
-                ProgressBar(value: $gameTimer.progress).frame(width: 300, height: 20, alignment: .center)
+                ProgressBar(value: $gameTimer.progress).frame(width: 150, height: 20, alignment: .center)
                 HStack{
-                    Text("時間剩餘：\(questionTime - gameTimer.secondsElapsed)")
+                    Text("Time remained：\(gameTimer.questionTime - gameTimer.secondsElapsed)")
+                        .font(.custom("SnowstormBlack", size: 20))
                         .foregroundColor(Color.white)
                         .padding(.all, 9)
-                }.background(Color.green).cornerRadius(10)
+                }.background(Color.red.opacity(0.7)).cornerRadius(10)
                 HStack{
-                    Text("答對題數：\(score)")
+                    Text("score：\(score)")
+                        .font(.custom("SnowstormBlack", size: 20))
                         .foregroundColor(Color.white)
                         .padding(.all, 9)
-                }.background(Color.blue).cornerRadius(10)
-            }).offset(x: -220, y: -120)
+                }.background(Color.red.opacity(0.7)).cornerRadius(10)
+            }).offset(x: -280, y: 0)
             
             HStack{
                 ForEach(currentAns.indices, id:\.self){ (idx) in
@@ -148,13 +123,48 @@ struct InGameView: View {
                 }.onDelete(perform: {indexSet in
                     currentShuffle.remove(atOffsets: indexSet)
                 })
-            }.offset(x: 0, y: 0)
+            }.offset(x: 0, y: -110)
+            
+            Button(action: {
+                gameTimer.pause()
+            }) {
+                HStack {
+                    Image(systemName: "pause.fill")
+                }
+                .padding(10)
+                .foregroundColor(.white)
+                .background(Color.blue.opacity(0.9))
+                .cornerRadius(10)
+            }.offset(x: -380, y: -150)
+            
+            if gameTimer.isPause{
+                ZStack{
+                    Color.white.opacity(0.7).edgesIgnoringSafeArea(.all).onTapGesture(perform: {
+                        gameTimer.resume()
+                    })
+                    VStack{
+                        Text("pause").font(.custom("SnowstormBlack", size: 20))
+                        Button(action: {
+                            currentPage = Page.HOME_PAGE
+                        }) {
+                            HStack {
+                                Image(systemName: "house")
+                                Text("Home").font(.custom("SnowstormBlack", size: 16))
+                            }
+                            .padding(10)
+                            .foregroundColor(.white)
+                            .background(Color.blue)
+                            .cornerRadius(40)
+                        }
+                    }
+                    
+                }
+            }
             
         }.onAppear(perform: {
             startGame()
         }).onChange(of: gameTimer.secondsElapsed, perform: { value in
-            if value > questionTime{
-             
+            if value > gameTimer.questionTime{
                 gameFinished()
             }
         })
@@ -164,9 +174,9 @@ struct InGameView: View {
     }
     
     func gameFinished(){
-        gameTimer.secondsElapsed = 0
         //isStart = false
         currentPage = Page.RESULT_PAGE
+        gameTimer.pause()
     }
     
     func onDragFinish(){
@@ -177,8 +187,11 @@ struct InGameView: View {
             }
         }
         if isFinished{
-            score += 1
-            toNextQuestion()
+            playVoice()
+            delay(1.0, closure: {
+                score += 1
+                toNextQuestion()
+            })
         }
     }
     
@@ -190,8 +203,10 @@ struct InGameView: View {
     }
     
     func startGame(){
+        score = 0
         questions.shuffle()
-        for i in questions[currentIdx].text{
+        let shuffle = questions[currentIdx].text.shuffled()
+        for i in shuffle{
             currentShuffle.append(Qua(char: i))
         }
         for i in questions[currentIdx].text{
@@ -221,6 +236,12 @@ struct InGameView: View {
         playVoice()
     }
     
+    
+    func delay(_ delay:Double, closure:@escaping ()->()) {
+        DispatchQueue.main.asyncAfter(
+            deadline: DispatchTime.now() + Double(Int64(delay * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC), execute: closure)
+    }
+    
 }
 
 struct InGameView_Previews: PreviewProvider {
@@ -229,15 +250,19 @@ struct InGameView_Previews: PreviewProvider {
             InGameView(currentPage: .constant(Page.GAME_PAGE),
                        score: .constant(0),
                        totalQuestionCount: .constant(10),
-                       questionTime: .constant(60)).previewLayout(.fixed(width: 800, height: 375))
+                       gameTimer: GameTimer()).previewLayout(.fixed(width: 800, height: 375))
         }
     }
 }
 
 struct DragView: View {
+    
+    var dingPlayer: AVPlayer { AVPlayer.sharedCorrectPlayer }
+
+    
     @Binding var qua : Qua
     @Binding var currentAns : [Ans]
-    @State var background : Color = Color.yellow
+    @State var background : Color = Color.yellow.opacity(0.5)
     @State var isMoved : Bool = false
     var onDragFinish : ()->Void
     
@@ -246,9 +271,9 @@ struct DragView: View {
             
             VStack{
                 if !qua.isCorrect {
-                    Text(String(qua.char))
+                    Text(String(qua.char)).font(.custom("SnowstormBlack", size: 30))
                 }
-            }.frame(width: 50, height: 50, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
+            }.frame(width: 60, height: 60, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
             
             
         }.background(background)
@@ -283,6 +308,7 @@ struct DragView: View {
                         if rect.intersects(currentAns[i].location) && qua.char == currentAns[i].char{
                             currentAns[i].isFilled = true
                             qua.isCorrect = true
+                            dingPlayer.playFromStart()
                         }
                     }
                     qua.offset.width = 0
@@ -294,7 +320,7 @@ struct DragView: View {
             if value {
                 background = Color.clear
             }else{
-                background = Color.yellow
+                background = Color.yellow.opacity(0.5)
             }
         })
     
@@ -314,16 +340,21 @@ struct DragView: View {
 
 struct WordView: View {
     @Binding var ans : Ans
+    @State var background : Color = Color.white.opacity(0.5)
     var body: some View {
         VStack{
             VStack{
                 if ans.isFilled{
-                    Text(String(ans.char))
+                    Text(String(ans.char)).font(.custom("SnowstormBlack", size: 30))
                 }else{
                     Text("")
                 }
-            }.frame(width: 50, height: 50, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
-        }.background(Color.orange)
+            }.frame(width: 60, height: 60, alignment: /*@START_MENU_TOKEN@*/.center/*@END_MENU_TOKEN@*/)
+        }.overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.red.opacity(0.7), lineWidth: 10)
+        )
+        .background(background)
         .cornerRadius(20).padding(2)
         .overlay(
             GeometryReader(content: { geometry in
@@ -333,6 +364,12 @@ struct WordView: View {
                     ans.location  = geometry.frame(in: .global)
                 })
             })
-        )
+        ).onChange(of: ans, perform: { value in
+            if value.isFilled {
+                background = Color.yellow.opacity(0.5)
+            }else{
+                background = Color.white.opacity(0.5)
+            }
+        })
     }
 }

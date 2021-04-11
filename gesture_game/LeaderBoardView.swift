@@ -16,35 +16,61 @@ struct LeaderBoardView: View {
     var body: some View {
         ZStack{
             
-            VStack{
-                Text("LeaderBoard")
-                List(0..<list.count, id:\.self) { (i) in
-                    Text("\(i)")
-                    Spacer()
-                    Text("\(list[i].name)")
-                    Spacer()
-                    Text("\(list[i].score)")
-                    Spacer()
-                    Text("\(getDate(date: list[i].date))")
-                }
-            }.padding()
             
-            ZStack(alignment: .top){
-                Button(action: {
-                    currentPage = Page.HOME_PAGE
-                }) {
-                    HStack {
-                        Image(systemName: "house")
-                        Text("Home")
-                        
+            
+            ZStack{
+                
+                VStack{
+                    Text("LeaderBoard").padding(10).font(.custom("SnowstormBlack", size: 16))
+                    HStack{
+                        Text("rank").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                        Spacer()
+                        Text("name").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                        Spacer()
+                        Text("score").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                        Spacer()
+                        Text("date").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                        Spacer()
+                        Text("time").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
                     }
-                    .padding(10)
-                    .foregroundColor(.white)
-                    .background(Color.blue)
-                    .cornerRadius(40)
-                }
-            }.padding().offset(x: -350, y: -150)
+                   
+                    List(0..<list.count, id:\.self) { (i) in
+                        HStack{
+                            Text("\(i)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            Spacer()
+                            Text("\(list[i].name)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            Spacer()
+                            Text("\(list[i].score)").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            Spacer()
+                            Text("\(getDate(date: list[i].date))").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                            Spacer()
+                            Text("\(list[i].time)s").frame(maxWidth:100).font(.custom("SnowstormBlack", size: 16))
+                        }
+                    }.background(Color.gray.opacity(0.1))
+                }.padding().background(Image("background_2")
+                                        .edgesIgnoringSafeArea(.all))
+                
+                ZStack(alignment: .top){
+                    Button(action: {
+                        currentPage = Page.HOME_PAGE
+                    }) {
+                        HStack {
+                            Image(systemName: "house")
+                            Text("Home").font(.custom("SnowstormBlack", size: 16))
+                            
+                        }
+                        .padding(5)
+                        .foregroundColor(.white)
+                        .background(Color.blue)
+                        .cornerRadius(40)
+                    }
+                }.padding().offset(x: -350, y: -150)
+                
+            }
          
+           
+         
+        
         }.onAppear(perform: {
             list = LeaderBoardData().leaderBoardList
         })
