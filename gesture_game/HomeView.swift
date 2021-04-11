@@ -11,6 +11,7 @@ import SwiftUI
 struct HomeView: View {
     
     @Binding var currentPage : Page
+    @Binding var totalQuestionCount : Int
     @ObservedObject var gameTimer: GameTimer
 
     
@@ -26,7 +27,8 @@ struct HomeView: View {
                     Text("created by flexolk")
                         .font(.custom("SnowstormBlack", size: 20)).padding(.bottom, 30).onTapGesture(perform: {
                             currentPage = Page.GAME_PAGE
-                            gameTimer.questionTime = 48763
+                            gameTimer.questionTime = 10
+                            totalQuestionCount = 16
                         })
                       Button(
                           action:{
@@ -71,6 +73,7 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         Group {
             HomeView(currentPage: .constant(Page.HOME_PAGE),
+                     totalQuestionCount: .constant(10),
                      gameTimer: GameTimer()
             ).previewLayout(.fixed(width: 800, height: 375))
         }

@@ -148,13 +148,13 @@ struct AppController: View {
     @StateObject var gameTimer = GameTimer()
     @State var currentPage = Page.HOME_PAGE
     @State var score = 0
-    @State var totalQuestionCount = 10
+    @State var totalQuestionCount = 1
 
     var body: some View {
         return ZStack{
             switch currentPage {
             case Page.HOME_PAGE:
-                HomeView(currentPage: $currentPage,gameTimer:gameTimer)
+                HomeView(currentPage: $currentPage,totalQuestionCount: $totalQuestionCount,gameTimer:gameTimer)
             case Page.GAME_PAGE:
                 InGameView(currentPage: $currentPage,score: $score,totalQuestionCount: $totalQuestionCount,gameTimer:gameTimer)
             case Page.RESULT_PAGE:
@@ -162,7 +162,7 @@ struct AppController: View {
             case Page.LEADERBOARD_PAGE:
                 LeaderBoardView(currentPage: $currentPage)
             default:
-                HomeView(currentPage: $currentPage,gameTimer:gameTimer)
+                HomeView(currentPage: $currentPage,totalQuestionCount: $totalQuestionCount,gameTimer:gameTimer)
             }
         }.onAppear(perform: {
             AVPlayer.setupBgMusic()
